@@ -1,0 +1,71 @@
+name: Bug report
+description: Something's wrong with llmeter
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting! Please fill in the fields below so we can reproduce quickly.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did you expect, and what did you get instead?
+      placeholder: I called openai.chat.completions.create and llmeter logged 0 tokens
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: Minimal reproduction
+      description: Smallest code snippet that triggers the bug.
+      render: python
+      placeholder: |
+        import llmeter, openai
+        llmeter.init()
+        openai.OpenAI().chat.completions.create(...)
+    validations:
+      required: true
+
+  - type: textarea
+    id: doctor
+    attributes:
+      label: Output of `llmeter doctor`
+      render: shell
+      placeholder: |
+        $ llmeter doctor
+        ...
+    validations:
+      required: true
+
+  - type: input
+    id: python-version
+    attributes:
+      label: Python version
+      placeholder: "3.12.1"
+    validations:
+      required: true
+
+  - type: input
+    id: llmeter-version
+    attributes:
+      label: llmeter version
+      placeholder: "0.1.0"
+    validations:
+      required: true
+
+  - type: input
+    id: provider-sdk
+    attributes:
+      label: Provider + SDK version
+      placeholder: "openai==1.55.3"
+    validations:
+      required: true
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else?
+      description: Stack traces, logs, screenshots.

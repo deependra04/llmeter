@@ -1,0 +1,41 @@
+name: Feature request
+description: Suggest an idea for llmeter
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        llmeter tries to stay small, zero-dep, and local-first. Please keep that in mind.
+        If you're proposing a gateway / proxy / routing feature, it's almost certainly out of scope — see LiteLLM or Portkey instead.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem are you trying to solve?
+      placeholder: I want to see cache savings broken down per tag.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: What would the API / CLI / output look like?
+      placeholder: |
+        llmeter stats --by=tag.feature --show-cache-savings
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives you've considered
+
+  - type: checkboxes
+    id: scope
+    attributes:
+      label: Scope check
+      options:
+        - label: This does not require adding a runtime dependency.
+        - label: This does not require the user to change their SDK base URL.
+        - label: This works offline / local-first.

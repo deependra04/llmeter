@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security report
+    url: mailto:dvip34456@gmail.com
+    about: Please email security issues privately, do not open a public issue.
+  - name: Add a model to pricing.json
+    url: https://github.com/deependra04/llmeter/blob/main/CONTRIBUTING.md#adding-a-model-to-pricingjson
+    about: Missing a model? PR pricing.json — see the contributing guide.

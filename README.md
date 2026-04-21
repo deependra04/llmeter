@@ -1,5 +1,10 @@
 # llmeter
 
+[![CI](https://github.com/deependra04/llmeter/actions/workflows/ci.yml/badge.svg)](https://github.com/deependra04/llmeter/actions/workflows/ci.yml)
+[![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-blue)](https://pypi.org/project/llmeter/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![Version](https://img.shields.io/badge/version-0.1.0-orange)](https://github.com/deependra04/llmeter/releases)
+
 > One line to track every AI API cost. Sentry for AI costs. No proxy, no account, free forever.
 
 ```python
