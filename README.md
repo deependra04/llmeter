@@ -1,0 +1,138 @@
+# llmeter
+
+> One line to track every AI API cost. Sentry for AI costs. No proxy, no account, free forever.
+
+```python
+import llmeter
+llmeter.init()
+```
+
+That's it. Now every OpenAI / Anthropic / Google call you make is logged — tokens, cost, latency, cache hits — to a local SQLite file.
+
+```
+$ llmeter stats
+
+  llmeter · Today
+  ────────────────────────────────────────────────────
+  Spend                    $4.21
+  Calls                       89
+  Input               1,240,500 tokens
+  Output                210,400 tokens
+  Cache read             87,200 tokens
+  Avg latency            842 ms
+```
+
+## Why
+
+- Your monthly AI bill came back at $847 and you have no idea which feature caused it.
+- Your bill swings 2-3× every quarter for no reason you can explain.
+- Every existing tool wants you to change your base URL, run a proxy, or create an account.
+- llmeter is a *tracker*, not a gateway. One line, zero config, local first.
+
+## Install
+
+```bash
+pip install llmeter
+```
+
+Python 3.10+. Zero runtime dependencies.
+
+## Use it
+
+```python
+import llmeter
+llmeter.init()
+
+import openai
+client = openai.OpenAI()
+client.chat.completions.create(
+    model="gpt-4o-mini",
+    messages=[{"role": "user", "content": "hi"}],
+)
+```
+
+Then any time:
+
+```bash
+llmeter stats              # today
+llmeter stats --week       # last 7 days
+llmeter stats --month      # this month
+llmeter stats --by=model   # group by model
+llmeter tail               # live stream
+llmeter export > calls.csv
+llmeter doctor             # diagnose setup
+```
+
+## Tag calls by user / feature
+
+```python
+llmeter.configure(tags={"user": "alice", "feature": "chat"})
+```
+
+Then:
+
+```bash
+llmeter stats --by=tag.user
+llmeter stats --by=tag.feature
+```
+
+## Budget alerts
+
+```bash
+export LLMETER_DAILY_BUDGET=10   # raise BudgetExceeded when spend hits $10/day
+export LLMETER_DAILY_WARN=5      # warn at $5/day, keep going
+```
+
+Or in code:
+
+```python
+llmeter.init(budget_usd_day=10, warn_usd_day=5)
+```
+
+## Works with
+
+| Provider | Tracks |
+|---|---|
+| OpenAI | prompt / completion tokens, cached tokens, cost |
+| Anthropic | input / output tokens, cache read, cache write, cost |
+| Google Gemini | prompt / output tokens, cached content tokens, cost |
+| DeepSeek, xAI, Mistral, Cohere | via pricing DB; patches coming |
+
+Because llmeter patches the underlying SDKs, **LangChain, LlamaIndex, and any other framework built on these SDKs work automatically** — no integration needed.
+
+## Where is the data?
+
+`~/.llmeter/log.db` — a single SQLite file. One table, ten columns. Move it, query it, back it up, delete it. It's yours.
+
+Set `LLMETER_DB=/path/to/your.db` to put it elsewhere.
+
+## vs other tools
+
+| | llmeter | LiteLLM | Helicone | Langfuse |
+|---|---|---|---|---|
+| One-line setup | ✓ | ✗ | ✗ | ✗ |
+| Requires URL change | ✗ | ✓ | ✓ | ✗ |
+| Needs account | ✗ | ✗ | ✓ | ✓ |
+| Local-first | ✓ | ~ | ✗ | ~ |
+| Gateway / routing | ✗ | ✓ | ✓ | ✗ |
+| Pure cost tracking | ✓ | ~ | ~ | ~ |
+| Zero runtime deps | ✓ | ✗ | ✗ | ✗ |
+
+llmeter is tracking-only by design. If you want routing, fallbacks, or an auth proxy, use LiteLLM or Portkey. If you just want to know what you're spending, use llmeter.
+
+## Roadmap
+
+- [x] OpenAI, Anthropic, Google auto-patch
+- [x] CLI: stats, tail, export, reset, doctor
+- [x] Tags and budget alerts
+- [ ] Local web dashboard (`llmeter dashboard`)
+- [ ] OpenTelemetry GenAI export (`pip install llmeter[otel]`)
+- [ ] Streaming-response support
+- [ ] Node / TypeScript SDK (same SQLite file)
+- [ ] Weekly auto-updated pricing DB
+
+## License
+
+MIT © 2026 Deependra Vishwakarma.
+
+Pricing numbers are best-effort; verify with the provider before basing decisions on them. Unknown models log with $0 cost; please PR them in `src/llmeter/pricing.json`.
