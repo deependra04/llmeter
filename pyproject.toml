@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "llmeter"
-version = "0.1.0"
+version = "0.2.0"
 description = "One line to track every AI API cost. Sentry for AI costs."
 readme = "README.md"
 license = { text = "MIT" }
@@ -35,6 +35,8 @@ Issues = "https://github.com/deependra04/llmeter/issues"
 llmeter = "llmeter.cli:main"
 
 [project.optional-dependencies]
+mysql = ["PyMySQL>=1.1"]
+postgres = ["psycopg[binary]>=3.1"]
 otel = ["opentelemetry-api>=1.25.0"]
 dev = ["pytest>=8.0", "ruff>=0.5", "mypy>=1.10"]
 

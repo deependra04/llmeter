@@ -3,7 +3,7 @@
 [![CI](https://github.com/deependra04/llmeter/actions/workflows/ci.yml/badge.svg)](https://github.com/deependra04/llmeter/actions/workflows/ci.yml)
 [![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-blue)](https://pypi.org/project/llmeter/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-0.1.0-orange)](https://github.com/deependra04/llmeter/releases)
+[![Version](https://img.shields.io/badge/version-0.2.0-orange)](https://github.com/deependra04/llmeter/releases)
 
 > One line to track every AI API cost. Sentry for AI costs. No proxy, no account, free forever.
 
@@ -107,9 +107,26 @@ Because llmeter patches the underlying SDKs, **LangChain, LlamaIndex, and any ot
 
 ## Where is the data?
 
-`~/.llmeter/log.db` — a single SQLite file. One table, ten columns. Move it, query it, back it up, delete it. It's yours.
+By default: `~/.llmeter/log.db` — a single SQLite file. One table, ten columns. Move it, query it, back it up, delete it. It's yours.
 
-Set `LLMETER_DB=/path/to/your.db` to put it elsewhere.
+### Pick any backend
+
+SQLite is the default and needs nothing. For a team setup, point llmeter at your own MySQL or Postgres:
+
+```bash
+# One of these:
+export LLMETER_DB_URL="sqlite:///~/.llmeter/log.db"                 # default
+export LLMETER_DB_URL="mysql://user:pass@host:3306/llmeter"         # pip install llmeter[mysql]
+export LLMETER_DB_URL="postgresql://user:pass@host:5432/llmeter"    # pip install llmeter[postgres]
+```
+
+Or in code:
+
+```python
+llmeter.init(db_url="postgresql://user:pass@db.internal/llmeter")
+```
+
+The schema is created automatically on first connect. The legacy `LLMETER_DB=/path/to.db` env var still works (treated as a SQLite path).
 
 ## vs other tools
 
@@ -130,10 +147,11 @@ llmeter is tracking-only by design. If you want routing, fallbacks, or an auth p
 - [x] OpenAI, Anthropic, Google auto-patch
 - [x] CLI: stats, tail, export, reset, doctor
 - [x] Tags and budget alerts
+- [x] Streaming-response support (OpenAI, Anthropic)
+- [x] Multi-DB backend: SQLite (default), MySQL, Postgres
 - [ ] Local web dashboard (`llmeter dashboard`)
 - [ ] OpenTelemetry GenAI export (`pip install llmeter[otel]`)
-- [ ] Streaming-response support
-- [ ] Node / TypeScript SDK (same SQLite file)
+- [ ] Node / TypeScript SDK (same storage)
 - [ ] Weekly auto-updated pricing DB
 
 ## License

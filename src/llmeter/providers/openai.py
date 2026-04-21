@@ -1,4 +1,4 @@
-"""Patch openai SDK (v1.x) to record every chat completion."""
+"""Patch openai SDK (v1.x) to record every chat completion (incl. streaming)."""
 from __future__ import annotations
 
 import logging
@@ -10,11 +10,11 @@ from ..core import track
 log = logging.getLogger("llmeter.openai")
 
 
-def _extract_usage(response: Any) -> dict[str, int]:
-    """Pull token usage from an OpenAI response object."""
-    usage = getattr(response, "usage", None)
-    if usage is None and isinstance(response, dict):
-        usage = response.get("usage")
+def _extract_usage(response_or_chunk: Any) -> dict[str, int]:
+    """Pull token usage from an OpenAI response or streaming chunk."""
+    usage = getattr(response_or_chunk, "usage", None)
+    if usage is None and isinstance(response_or_chunk, dict):
+        usage = response_or_chunk.get("usage")
     if usage is None:
         return {}
 
@@ -42,9 +42,133 @@ def _extract_usage(response: Any) -> dict[str, int]:
     }
 
 
-def _extract_model(response: Any, kwargs: dict) -> str:
-    model = kwargs.get("model") or getattr(response, "model", None)
+def _extract_model(response_or_chunk: Any, kwargs: dict) -> str:
+    model = kwargs.get("model") or getattr(response_or_chunk, "model", None)
     return str(model) if model else "unknown"
+
+
+def _force_stream_usage(kwargs: dict) -> dict:
+    """Ensure usage is included in the final streaming chunk."""
+    opts = dict(kwargs.get("stream_options") or {})
+    opts.setdefault("include_usage", True)
+    kwargs["stream_options"] = opts
+    return kwargs
+
+
+class _StreamTracker:
+    """Iterator proxy that records usage once the stream finishes."""
+
+    def __init__(self, stream, kwargs: dict, start: float):
+        self._stream = stream
+        self._kwargs = kwargs
+        self._start = start
+        self._last_chunk = None
+        self._recorded = False
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        try:
+            chunk = next(self._stream)
+        except StopIteration:
+            self._record()
+            raise
+        self._last_chunk = chunk
+        return chunk
+
+    def __getattr__(self, name):
+        return getattr(self._stream, name)
+
+    def __enter__(self):
+        self._stream.__enter__()
+        return self
+
+    def __exit__(self, *exc):
+        try:
+            return self._stream.__exit__(*exc)
+        finally:
+            self._record()
+
+    def close(self):
+        try:
+            self._stream.close()
+        finally:
+            self._record()
+
+    def _record(self):
+        if self._recorded:
+            return
+        self._recorded = True
+        latency_ms = int((time.perf_counter() - self._start) * 1000)
+        try:
+            usage = _extract_usage(self._last_chunk) if self._last_chunk else {}
+            if usage:
+                track(
+                    provider="openai",
+                    model=_extract_model(self._last_chunk, self._kwargs),
+                    latency_ms=latency_ms,
+                    **usage,
+                )
+        except Exception as e:
+            log.warning("llmeter: openai stream tracking failed: %s", e)
+
+
+class _AsyncStreamTracker:
+    def __init__(self, stream, kwargs: dict, start: float):
+        self._stream = stream
+        self._kwargs = kwargs
+        self._start = start
+        self._last_chunk = None
+        self._recorded = False
+
+    def __aiter__(self):
+        return self
+
+    async def __anext__(self):
+        try:
+            chunk = await self._stream.__anext__()
+        except StopAsyncIteration:
+            self._record()
+            raise
+        self._last_chunk = chunk
+        return chunk
+
+    def __getattr__(self, name):
+        return getattr(self._stream, name)
+
+    async def __aenter__(self):
+        await self._stream.__aenter__()
+        return self
+
+    async def __aexit__(self, *exc):
+        try:
+            return await self._stream.__aexit__(*exc)
+        finally:
+            self._record()
+
+    async def close(self):
+        try:
+            await self._stream.close()
+        finally:
+            self._record()
+
+    def _record(self):
+        if self._recorded:
+            return
+        self._recorded = True
+        latency_ms = int((time.perf_counter() - self._start) * 1000)
+        try:
+            usage = _extract_usage(self._last_chunk) if self._last_chunk else {}
+            if usage:
+                track(
+                    provider="openai",
+                    model=_extract_model(self._last_chunk, self._kwargs),
+                    latency_ms=latency_ms,
+                    **usage,
+                )
+        except Exception as e:
+            log.warning("llmeter: openai async stream tracking failed: %s", e)
 
 
 def patch() -> None:
@@ -62,8 +186,13 @@ def patch() -> None:
         original = sync_cls.create
 
         def wrapped(self, *args, **kwargs):
+            is_stream = bool(kwargs.get("stream"))
+            if is_stream:
+                kwargs = _force_stream_usage(kwargs)
             start = time.perf_counter()
             response = original(self, *args, **kwargs)
+            if is_stream:
+                return _StreamTracker(response, kwargs, start)
             latency_ms = int((time.perf_counter() - start) * 1000)
             try:
                 usage = _extract_usage(response)
@@ -85,8 +214,13 @@ def patch() -> None:
         original_async = async_cls.create
 
         async def wrapped_async(self, *args, **kwargs):
+            is_stream = bool(kwargs.get("stream"))
+            if is_stream:
+                kwargs = _force_stream_usage(kwargs)
             start = time.perf_counter()
             response = await original_async(self, *args, **kwargs)
+            if is_stream:
+                return _AsyncStreamTracker(response, kwargs, start)
             latency_ms = int((time.perf_counter() - start) * 1000)
             try:
                 usage = _extract_usage(response)
