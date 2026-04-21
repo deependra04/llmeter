@@ -28,6 +28,7 @@ class Config:
     budget_usd_day: float | None = None
     warn_usd_day: float | None = None
     tags: dict[str, Any] = field(default_factory=dict)
+    otel: bool = False
     initialized: bool = False
     patched: set[str] = field(default_factory=set)
 
@@ -126,6 +127,23 @@ def track(
         )
     )
 
+    if _config.otel:
+        try:
+            from . import otel
+
+            otel.emit_span(
+                provider=provider,
+                model=model,
+                input_tokens=input_tokens,
+                output_tokens=output_tokens,
+                cache_read_tokens=cache_read_tokens,
+                cache_write_tokens=cache_write_tokens,
+                cost_usd=cost,
+                latency_ms=latency_ms,
+            )
+        except Exception as e:
+            log.warning("tokenly: otel bridge error: %s", e)
+
     if _config.budget_usd_day is not None:
         spent = _today_spend_usd() + cost
         if spent >= _config.budget_usd_day:
@@ -151,6 +169,7 @@ def configure(
     budget_usd_day: float | None = None,
     warn_usd_day: float | None = None,
     tags: dict[str, Any] | None = None,
+    otel: bool | None = None,
 ) -> None:
     """Configure tokenly without initializing patches.
 
@@ -160,6 +179,9 @@ def configure(
         3. TOKENLY_DB_URL env
         4. TOKENLY_DB env (legacy)
         5. default ~/.tokenly/log.db
+
+    Pass `otel=True` to emit OpenTelemetry GenAI spans for every call
+    (requires `pip install tokenly[otel]`).
     """
     resolved = resolve_url(db_url=db_url, db_path=db_path)
     _config.db_url = resolved
@@ -177,6 +199,11 @@ def configure(
     if tags is not None:
         _config.tags = dict(tags)
 
+    if otel is not None:
+        _config.otel = bool(otel)
+    elif os.environ.get("TOKENLY_OTEL") in ("1", "true", "TRUE", "yes"):
+        _config.otel = True
+
 
 def init(
     db_url: str | None = None,
@@ -184,6 +211,7 @@ def init(
     budget_usd_day: float | None = None,
     warn_usd_day: float | None = None,
     tags: dict[str, Any] | None = None,
+    otel: bool | None = None,
 ) -> None:
     """Initialize tokenly. Call once at app startup.
 
@@ -192,6 +220,8 @@ def init(
     Storage is SQLite by default. Pass db_url to use MySQL or Postgres:
         tokenly.init(db_url="mysql://user:pass@host/dbname")
         tokenly.init(db_url="postgresql://user:pass@host/dbname")
+
+    Pass `otel=True` to emit OpenTelemetry GenAI spans.
     """
     configure(
         db_url=db_url,
@@ -199,6 +229,7 @@ def init(
         budget_usd_day=budget_usd_day,
         warn_usd_day=warn_usd_day,
         tags=tags,
+        otel=otel,
     )
 
     # Open once to validate connection + ensure schema exists.

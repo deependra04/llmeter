@@ -4,6 +4,15 @@ All notable changes to tokenly are documented here. Format follows [Keep a Chang
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-04-22
+
+### Added
+- **Local dashboard.** `tokenly dashboard` boots a stdlib HTTP server with a single-page web UI (Chart.js via CDN, no npm build step). Spend cards, cost-by-model bar chart, cost-over-time line chart, live table of recent calls, Today / Week / Month / All tabs, dark-mode aware. Read-only, auto-port-fallback, binds `127.0.0.1` by default.
+- **OpenTelemetry GenAI export.** Opt in with `tokenly.init(otel=True)` or `export TOKENLY_OTEL=1`. Emits one span per call following the experimental GenAI semantic conventions (`gen_ai.provider.name`, `gen_ai.request.model`, `gen_ai.usage.input_tokens`, `gen_ai.usage.output_tokens`) + `tokenly.*` attributes for cost / cache / latency. Span `start_time` reconstructed from measured latency so the span actually covers the model call. Requires `pip install tokenly[otel]`; default install stays zero-dep.
+- **Weekly pricing auto-sync.** New `.github/workflows/pricing-sync.yml` cron (Mondays 12:00 UTC) runs `scripts/sync_pricing.py`, diffs tokenly's `pricing.json` against LiteLLM's MIT-licensed community pricing feed, and opens a PR when prices drift. Human review required before merge.
+- **LangChain / LlamaIndex examples.** `examples/langchain_example.py` + `examples/llamaindex_example.py` — no integration code needed; tokenly patches the underlying SDKs so these frameworks are tracked automatically.
+- Backend adds `time_series(since_ts, bucket_seconds)` and `recent_calls(limit)` methods, portable across sqlite / mysql / postgres.
+
 ## [0.1.0] - 2026-04-22
 
 Initial public release.
@@ -22,5 +31,6 @@ Initial public release.
 - Zero runtime dependencies for the default SQLite path. Python 3.10 / 3.11 / 3.12 / 3.13.
 - CI on GitHub Actions: ruff + pytest across all four Python versions.
 
-[Unreleased]: https://github.com/deependra04/tokenly/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/deependra04/tokenly/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/deependra04/tokenly/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/deependra04/tokenly/releases/tag/v0.1.0

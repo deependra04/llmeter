@@ -1,0 +1,51 @@
+name: Pricing sync
+
+on:
+  schedule:
+    - cron: "0 12 * * 1"  # Mondays 12:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Run sync script
+        run: python scripts/sync_pricing.py
+
+      - name: Read summary
+        id: summary
+        run: |
+          if [ -f PRICING_SYNC_SUMMARY.md ]; then
+            {
+              echo "body<<SUMMARY_EOF"
+              cat PRICING_SYNC_SUMMARY.md
+              echo "SUMMARY_EOF"
+            } >> "$GITHUB_OUTPUT"
+          else
+            echo "body=" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Open PR if changed
+        if: steps.summary.outputs.body != ''
+        uses: peter-evans/create-pull-request@v7
+        with:
+          branch: pricing/sync
+          commit-message: "pricing: weekly sync from LiteLLM"
+          title: "pricing: weekly sync"
+          body: ${{ steps.summary.outputs.body }}
+          labels: |
+            pricing
+            automated
+          delete-branch: true
+          add-paths: |
+            src/tokenly/pricing.json

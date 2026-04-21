@@ -151,6 +151,17 @@ def cmd_reset(args) -> int:
     return 0
 
 
+def cmd_dashboard(args) -> int:
+    from .dashboard import serve
+
+    serve(
+        host=args.host,
+        port=args.port,
+        open_browser=not args.no_open,
+    )
+    return 0
+
+
 def cmd_doctor(args) -> int:
     import importlib.util
 
@@ -232,6 +243,12 @@ def build_parser() -> argparse.ArgumentParser:
 
     d = sub.add_parser("doctor", help="diagnose setup")
     d.set_defaults(func=cmd_doctor)
+
+    dash = sub.add_parser("dashboard", help="launch the local web dashboard")
+    dash.add_argument("--host", default="127.0.0.1", help="bind host (default: 127.0.0.1)")
+    dash.add_argument("--port", type=int, default=8787, help="bind port (default: 8787)")
+    dash.add_argument("--no-open", action="store_true", help="do not open browser")
+    dash.set_defaults(func=cmd_dashboard)
 
     return p
 

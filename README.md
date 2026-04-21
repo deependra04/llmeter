@@ -3,7 +3,7 @@
 [![CI](https://github.com/deependra04/tokenly/actions/workflows/ci.yml/badge.svg)](https://github.com/deependra04/tokenly/actions/workflows/ci.yml)
 [![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-blue)](https://pypi.org/project/tokenly/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-0.1.0-orange)](https://github.com/deependra04/tokenly/releases)
+[![Version](https://img.shields.io/badge/version-0.2.0-orange)](https://github.com/deependra04/tokenly/releases)
 
 > One line to track every AI API cost. Sentry for AI costs. No proxy, no account, free forever.
 
@@ -103,7 +103,22 @@ tokenly.init(budget_usd_day=10, warn_usd_day=5)
 | Google Gemini | prompt / output tokens, cached content tokens, cost |
 | DeepSeek, xAI, Mistral, Cohere | via pricing DB; patches coming |
 
-Because tokenly patches the underlying SDKs, **LangChain, LlamaIndex, and any other framework built on these SDKs work automatically** — no integration needed.
+Because tokenly patches the underlying SDKs, **LangChain, LlamaIndex, and any other framework built on these SDKs work automatically** — no integration needed. See `examples/langchain_example.py` and `examples/llamaindex_example.py`.
+
+## OpenTelemetry GenAI export (optional)
+
+Emit an OpenTelemetry span per tracked call, following the [GenAI semantic conventions](https://opentelemetry.io/docs/specs/semconv/gen-ai/) (`gen_ai.provider.name`, `gen_ai.request.model`, `gen_ai.usage.input_tokens`, `gen_ai.usage.output_tokens`). That means tokenly plugs straight into Grafana, Datadog, Honeycomb, Jaeger, or any OTel-compatible backend — no extra integration.
+
+```bash
+pip install tokenly[otel]
+```
+
+```python
+import tokenly
+tokenly.init(otel=True)   # or: export TOKENLY_OTEL=1
+```
+
+Span `start_time` is reconstructed from the measured latency so backends see a span that actually covers the model call, not a zero-width marker. The GenAI semconv is still experimental upstream — we track the latest and will bump as it stabilizes.
 
 ## Where is the data?
 
@@ -128,6 +143,16 @@ tokenly.init(db_url="postgresql://user:pass@db.internal/tokenly")
 
 The schema is created automatically on first connect. The legacy `TOKENLY_DB=/path/to.db` env var still works (treated as a SQLite path).
 
+## Local dashboard
+
+```bash
+tokenly dashboard
+```
+
+Boots a local, read-only web dashboard on `http://127.0.0.1:8787` (auto-picks a free port if that's taken) and opens your browser. Spend cards, cost-by-model bars, cost-over-time line chart, and a live table of recent calls. Tabs for Today / Week / Month / All. Refreshes every 5 seconds.
+
+Stdlib HTTP server, no JS framework, Chart.js via CDN. Stays zero-dep. Pass `--no-open` for headless, `--host 0.0.0.0` to expose on your LAN (no auth — only do this on trusted networks).
+
 ## vs other tools
 
 | | tokenly | LiteLLM | Helicone | Langfuse |
@@ -149,10 +174,10 @@ tokenly is tracking-only by design. If you want routing, fallbacks, or an auth p
 - [x] Tags and budget alerts
 - [x] Streaming-response support (OpenAI, Anthropic)
 - [x] Multi-DB backend: SQLite (default), MySQL, Postgres
-- [ ] Local web dashboard (`tokenly dashboard`)
-- [ ] OpenTelemetry GenAI export (`pip install tokenly[otel]`)
+- [x] Local web dashboard (`tokenly dashboard`)
+- [x] OpenTelemetry GenAI export (`pip install tokenly[otel]`)
+- [x] Weekly auto-updated pricing DB
 - [ ] Node / TypeScript SDK (same storage)
-- [ ] Weekly auto-updated pricing DB
 
 ## License
 

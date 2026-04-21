@@ -1,6 +1,7 @@
 PLAN.md
 CLAUDE.md
 .claude/
+PRICING_SYNC_SUMMARY.md
 __pycache__/
 *.py[cod]
 *$py.class

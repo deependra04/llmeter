@@ -190,6 +190,36 @@ class Backend:
             row = cur.fetchone()
         return int(row[0] or 0)
 
+    def time_series(
+        self, since_ts: float | None, bucket_seconds: int
+    ) -> list[tuple[int, int, float]]:
+        """Return [(bucket_epoch, call_count, sum_cost_usd), ...] for a time series chart.
+
+        Bucketing is done in SQL with a portable CAST-to-integer trick so the
+        same query runs against sqlite / mysql / postgres.
+        """
+        where, params = self._window(since_ts)
+        sql = (
+            f"SELECT CAST(ts / {self.ph} AS INTEGER) * {self.ph} AS bucket, "
+            "COUNT(*), COALESCE(SUM(cost_usd), 0) "
+            f"FROM calls WHERE {where} "
+            "GROUP BY bucket ORDER BY bucket ASC"
+        )
+        bs = int(bucket_seconds)
+        with self._cursor() as cur:
+            cur.execute(sql, (bs, bs, *params))
+            return [(int(r[0]), int(r[1]), float(r[2])) for r in cur.fetchall()]
+
+    def recent_calls(self, limit: int = 50) -> list[tuple]:
+        sql = (
+            "SELECT id, ts, provider, model, input_tokens, output_tokens, "
+            "cache_read_tokens, cost_usd, latency_ms "
+            f"FROM calls ORDER BY id DESC LIMIT {int(limit)}"
+        )
+        with self._cursor() as cur:
+            cur.execute(sql)
+            return list(cur.fetchall())
+
     def today_spend_usd(self) -> float:
         start = _start_of_day_epoch()
         sql = (
